@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>onlypans — pan of the day</title>
+  <meta name="description" content="Pan of the day" />
+  <style>
+    :root { --bg: #0f0f10; --fg: #f6f6f6; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; display: grid; place-items: center; min-height: 100%;
+      background: radial-gradient(1200px 800px at 50% 20%, #1b1b1d, var(--bg));
+      color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .wrap { width: min(1100px, 92vw); text-align: center; }
+    h1 { margin: 24px 0 18px; font-weight: 800; letter-spacing: 0.02em; text-transform: lowercase; font-size: clamp(28px, 5vw, 64px); }
+    .frame { position: relative; border-radius: 22px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    img { width: 100%; display: block; aspect-ratio: 16/10; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>pan of the day</h1>
+    <div class="frame">
+      <img id="pan" alt="" decoding="async" loading="eager" />
+    </div>
+  </main>
+
+  <script>
+    // Daily pan image using Wikimedia Commons (privacy-friendly; works in Brave/Safari)
+    (function () {
+      const img = document.getElementById('pan');
+
+      // Deterministic index for the day (UTC-based)
+      const today = new Date();
+      const dayIndex = Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(today.getFullYear(),0,0)) / 86400000);
+
+      const categories = [
+        'Category:Frying_pans',
+        'Category:Saucepans',
+        'Category:Skillets'
+      ];
+
+      function fetchCategory(cat){
+        const url = `https://commons.wikimedia.org/w/api.php?origin=*&action=query&generator=categorymembers&gcmtitle=${encodeURIComponent(cat)}&gcmnamespace=6&gcmlimit=50&prop=imageinfo&iiprop=url&iiurlwidth=1600&format=json`;
+        return fetch(url)
+          .then(r=>r.json())
+          .then(data=>{
+            const pages = data.query && data.query.pages ? Object.values(data.query.pages) : [];
+            return pages.map(p => (p.imageinfo && p.imageinfo[0] && (p.imageinfo[0].thumburl || p.imageinfo[0].url))).filter(Boolean);
+          })
+          .catch(()=>[]);
+      }
+
+      Promise.all(categories.map(fetchCategory)).then(lists => {
+        const all = lists.flat();
+        if (all.length) {
+          const pick = all[dayIndex % all.length];
+          img.src = pick;
+        } else {
+          // ultimate fallback if API blocked
+          const y=today.getFullYear(), m=String(today.getMonth()+1).padStart(2,'0'), d=String(today.getDate()).padStart(2,'0');
+          const stamp=`${y}${m}${d}`;
+          img.referrerPolicy = 'no-referrer';
+          img.src = `https://source.unsplash.com/featured/1600x1000/?frying-pan,pan,cookware&sig=${stamp}`;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
